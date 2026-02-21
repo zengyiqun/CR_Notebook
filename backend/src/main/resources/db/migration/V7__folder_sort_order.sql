@@ -1,0 +1,1 @@
+ALTER TABLE note_folder ADD COLUMN sort_order INT NOT NULL DEFAULT 0;

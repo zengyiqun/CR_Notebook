@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -22,6 +23,7 @@ public class FolderService {
                 new LambdaQueryWrapper<Folder>()
                         .eq(Folder::getTenantId, TenantContext.getTenantId())
                         .eq(Folder::getTenantType, TenantContext.getTenantType())
+                        .orderByAsc(Folder::getSortOrder)
                         .orderByAsc(Folder::getCreatedAt));
         return folders.stream().map(this::toDTO).toList();
     }
@@ -67,6 +69,19 @@ public class FolderService {
         folderMapper.deleteById(parentId);
     }
 
+    @Transactional
+    public void reorderFolders(List<Map<String, Object>> items) {
+        for (Map<String, Object> item : items) {
+            Long id = Long.valueOf(item.get("id").toString());
+            Integer sortOrder = Integer.valueOf(item.get("sortOrder").toString());
+            Folder folder = folderMapper.selectById(id);
+            if (folder == null) continue;
+            checkTenant(folder);
+            folder.setSortOrder(sortOrder);
+            folderMapper.updateById(folder);
+        }
+    }
+
     private void checkTenant(Folder folder) {
         if (!folder.getTenantId().equals(TenantContext.getTenantId())
                 || folder.getTenantType() != TenantContext.getTenantType()) {
@@ -80,6 +95,7 @@ public class FolderService {
         dto.setName(f.getName());
         dto.setIcon(f.getIcon());
         dto.setParentId(f.getParentId());
+        dto.setSortOrder(f.getSortOrder());
         dto.setCreatedAt(f.getCreatedAt());
         dto.setUpdatedAt(f.getUpdatedAt());
         return dto;

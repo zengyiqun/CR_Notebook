@@ -357,8 +357,10 @@ async function createOrg() {
         :folder="folder"
         :depth="0"
         :show-count="showDocCount"
+        :siblings="folderStore.rootFolders"
         @add-sub-folder="emit('addFolder', $event)"
         @delete-folder="(id: string) => deletingFolderId = id"
+        @reorder="(ids: string[], parentId: string | null) => folderStore.reorderFolders(ids, parentId)"
       />
     </div>
 

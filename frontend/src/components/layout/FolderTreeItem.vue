@@ -9,11 +9,13 @@ const props = withDefaults(defineProps<{
   folder: Folder
   depth?: number
   showCount?: boolean
+  siblings?: Folder[]
 }>(), { depth: 0, showCount: false })
 
 const emit = defineEmits<{
   (e: 'addSubFolder', parentId: string): void
   (e: 'deleteFolder', id: string): void
+  (e: 'reorder', orderedIds: string[], parentId: string | null): void
 }>()
 
 const folderStore = useFolderStore()
@@ -72,20 +74,55 @@ function cancelRename() {
 }
 
 const isDragOver = ref(false)
+const folderDragPosition = ref<'before' | 'after' | null>(null)
+
+function onDragStart(e: DragEvent) {
+  e.dataTransfer!.setData('application/x-folder-id', props.folder.id)
+  e.dataTransfer!.effectAllowed = 'move'
+}
 
 function onDragOver(e: DragEvent) {
+  if (e.dataTransfer?.types.includes('application/x-folder-id')) {
+    const draggingId = e.dataTransfer.getData('application/x-folder-id')
+    if (draggingId === props.folder.id) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    const y = e.clientY - rect.top
+    folderDragPosition.value = y < rect.height / 2 ? 'before' : 'after'
+    isDragOver.value = false
+    return
+  }
   if (!e.dataTransfer?.types.includes('application/x-note-id')) return
   e.preventDefault()
   e.dataTransfer!.dropEffect = 'move'
   isDragOver.value = true
+  folderDragPosition.value = null
 }
 
 function onDragLeave() {
   isDragOver.value = false
+  folderDragPosition.value = null
 }
 
 function onDrop(e: DragEvent) {
+  const folderId = e.dataTransfer?.getData('application/x-folder-id')
+  if (folderId && folderId !== props.folder.id && props.siblings) {
+    e.preventDefault()
+    isDragOver.value = false
+    const position = folderDragPosition.value
+    folderDragPosition.value = null
+    const ids = props.siblings.map(f => f.id).filter(id => id !== folderId)
+    const targetIdx = ids.indexOf(props.folder.id)
+    if (targetIdx < 0) return
+    const insertIdx = position === 'after' ? targetIdx + 1 : targetIdx
+    ids.splice(insertIdx, 0, folderId)
+    emit('reorder', ids, props.folder.parentId ?? null)
+    return
+  }
+
   isDragOver.value = false
+  folderDragPosition.value = null
   const noteId = e.dataTransfer?.getData('application/x-note-id')
   if (!noteId) return
   e.preventDefault()
@@ -96,7 +133,11 @@ function onDrop(e: DragEvent) {
 <template>
   <div>
     <div class="group relative">
+      <!-- Drop indicator line (before) -->
+      <div v-if="folderDragPosition === 'before'" class="absolute left-3 right-3 top-0 h-0.5 bg-[var(--color-craft-accent)] rounded-full z-10"></div>
       <button
+        draggable="true"
+        @dragstart="onDragStart"
         @click="select"
         @dblclick.prevent="startRename"
         @dragover="onDragOver"
@@ -174,6 +215,8 @@ function onDrop(e: DragEvent) {
           </span>
         </span>
       </button>
+      <!-- Drop indicator line (after) -->
+      <div v-if="folderDragPosition === 'after'" class="absolute left-3 right-3 bottom-0 h-0.5 bg-[var(--color-craft-accent)] rounded-full z-10"></div>
     </div>
     <!-- Children (recursive) -->
     <div v-if="hasChildren && expanded">
@@ -183,8 +226,10 @@ function onDrop(e: DragEvent) {
         :folder="child"
         :depth="depth + 1"
         :show-count="showCount"
+        :siblings="children"
         @add-sub-folder="emit('addSubFolder', $event)"
         @delete-folder="emit('deleteFolder', $event)"
+        @reorder="(ids: string[], pid: string | null) => emit('reorder', ids, pid)"
       />
     </div>
   </div>

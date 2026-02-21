@@ -77,6 +77,14 @@ function formatWeekday(dateStr: string) {
   return '周' + days[d.getDay()]
 }
 
+function shouldShowLabel(index: number): boolean {
+  const total = dailyStats.value.length
+  if (total <= 14) return true
+  if (index === 0 || index === total - 1) return true
+  const interval = total <= 30 ? 7 : total <= 60 ? 14 : 15
+  return index % interval === 0
+}
+
 const iconPaths: Record<string, string> = {
   note: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8',
   folder: 'M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z',
@@ -147,26 +155,38 @@ watch(() => authStore.currentTenant, fetchStats, { deep: true })
               >{{ opt.label }}</button>
             </div>
           </div>
-          <div class="flex items-end h-44 overflow-x-auto" :class="dailyStats.length > 14 ? 'gap-0.5' : 'gap-2'">
-            <div v-for="day in dailyStats" :key="day.date" class="flex flex-col items-center gap-1 h-full justify-end" :class="dailyStats.length > 14 ? 'min-w-[20px] flex-1' : 'flex-1'">
+          <div
+            class="flex items-end"
+            :class="dailyStats.length <= 14 ? 'h-44 gap-2' : dailyStats.length <= 30 ? 'h-48 gap-[3px]' : dailyStats.length <= 60 ? 'h-48 gap-[2px]' : 'h-48 gap-px'"
+          >
+            <div
+              v-for="(day, di) in dailyStats"
+              :key="day.date"
+              class="flex flex-col items-center h-full justify-end min-w-0 flex-1"
+              :class="dailyStats.length <= 14 ? 'gap-1' : 'gap-0.5'"
+            >
               <div class="w-full flex items-end justify-center gap-0.5 flex-1">
-                <div class="relative group flex-1 flex flex-col items-center justify-end h-full" :class="dailyStats.length > 14 ? 'max-w-3' : 'max-w-5'">
-                  <span v-if="day.noteCount > 0" class="text-[9px] text-indigo-500 font-medium mb-0.5 opacity-0 group-hover:opacity-100 transition-opacity">{{ day.noteCount }}</span>
+                <div class="relative group flex-1 flex flex-col items-center justify-end h-full min-w-0" :class="dailyStats.length <= 14 ? 'max-w-5' : dailyStats.length <= 30 ? 'max-w-3' : 'max-w-2'">
+                  <span v-if="day.noteCount > 0 && dailyStats.length <= 30" class="text-[9px] text-indigo-500 font-medium mb-0.5 opacity-0 group-hover:opacity-100 transition-opacity">{{ day.noteCount }}</span>
                   <div
-                    class="w-full rounded-t-md bg-gradient-to-t from-indigo-400 to-indigo-300 transition-all duration-500"
+                    class="w-full bg-gradient-to-t from-indigo-400 to-indigo-300 transition-all duration-500"
+                    :class="dailyStats.length <= 30 ? 'rounded-t-md' : 'rounded-t-sm'"
                     :style="{ height: `${Math.max(day.noteCount > 0 ? 6 : 0, (day.noteCount / dailyMax) * 100)}%` }"
+                    :title="`${day.date} 笔记: ${day.noteCount}`"
                   />
                 </div>
-                <div class="relative group flex-1 flex flex-col items-center justify-end h-full" :class="dailyStats.length > 14 ? 'max-w-3' : 'max-w-5'">
-                  <span v-if="day.taskCount > 0" class="text-[9px] text-emerald-500 font-medium mb-0.5 opacity-0 group-hover:opacity-100 transition-opacity">{{ day.taskCount }}</span>
+                <div class="relative group flex-1 flex flex-col items-center justify-end h-full min-w-0" :class="dailyStats.length <= 14 ? 'max-w-5' : dailyStats.length <= 30 ? 'max-w-3' : 'max-w-2'">
+                  <span v-if="day.taskCount > 0 && dailyStats.length <= 30" class="text-[9px] text-emerald-500 font-medium mb-0.5 opacity-0 group-hover:opacity-100 transition-opacity">{{ day.taskCount }}</span>
                   <div
-                    class="w-full rounded-t-md bg-gradient-to-t from-emerald-400 to-emerald-300 transition-all duration-500"
+                    class="w-full bg-gradient-to-t from-emerald-400 to-emerald-300 transition-all duration-500"
+                    :class="dailyStats.length <= 30 ? 'rounded-t-md' : 'rounded-t-sm'"
                     :style="{ height: `${Math.max(day.taskCount > 0 ? 6 : 0, (day.taskCount / dailyMax) * 100)}%` }"
+                    :title="`${day.date} 任务: ${day.taskCount}`"
                   />
                 </div>
               </div>
-              <div class="text-center" v-if="dailyStats.length <= 14 || day.date === dailyStats[0].date || day.date === dailyStats[dailyStats.length - 1].date || new Date(day.date + 'T00:00:00').getDate() === 1 || new Date(day.date + 'T00:00:00').getDay() === 1">
-                <div class="text-[10px] font-medium text-[var(--color-craft-text)]">{{ formatDate(day.date) }}</div>
+              <div class="text-center" v-if="shouldShowLabel(di)">
+                <div class="text-[10px] font-medium text-[var(--color-craft-text)] whitespace-nowrap">{{ formatDate(day.date) }}</div>
                 <div v-if="dailyStats.length <= 14" class="text-[9px] text-[var(--color-craft-text-secondary)]">{{ formatWeekday(day.date) }}</div>
               </div>
             </div>

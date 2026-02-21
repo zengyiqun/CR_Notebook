@@ -18,6 +18,8 @@
 - **PDF / DOCX 导出** — 一键导出当前笔记为 PDF 或 Word 文档
 - **Ctrl+S 快捷保存** — 全局支持键盘快捷键保存
 
+![笔记编辑器](docs/screenshots/notes-editor.png)
+
 ### 双链笔记 & 知识图谱
 
 - **双向链接** — 在编辑器中输入 `[[` 触发自动补全，选择目标笔记创建 `[[noteId|noteTitle]]` 格式链接
@@ -27,9 +29,11 @@
   - 颜色按文件夹分组
   - 支持拖拽、缩放、搜索定位、点击查看详情
 
+![知识图谱](docs/screenshots/knowledge-graph.png)
+
 ### 笔记管理
 
-- **文件夹管理** — 支持多层级文件夹组织，拖拽笔记到文件夹
+- **文件夹管理** — 支持多层级文件夹组织，拖拽笔记到文件夹，拖拽排序
 - **标签系统** — 为笔记添加标签，侧边栏按标签快速过滤
 - **笔记搜索** — 全文搜索标题和摘要
 - **笔记置顶** — 重要笔记置顶显示
@@ -41,20 +45,26 @@
 - 任务完成状态切换
 - 侧边栏显示未完成任务数
 
+![任务管理](docs/screenshots/tasks.png)
+
 ### 每日笔记
 
 - 按日期自动创建日记，日历视图快速切换日期
 - 有记录的日期标记高亮
 - 自动获取当前位置天气（中文地名）
 - 心情记录（8种心情选择）
-- 双击编辑、失焦自动保存
+- 区域外双击退出编辑并自动保存
+
+![每日笔记](docs/screenshots/daily-note.png)
 
 ### 日历事件
 
-- 月视图日历，支持跨天事件
+- 月视图日历，支持跨天事件连续显示
 - 全天事件 / 定时事件
 - 双击空白新增事件，双击事件编辑
 - 颜色标记
+
+![日历](docs/screenshots/calendar.png)
 
 ### 白板
 
@@ -64,7 +74,10 @@
 ### 用量统计
 
 - 个人 / 组织用量仪表盘
-- 可选时间范围（7天 / 30天 / 90天）
+- 可选时间范围（7天 / 30天 / 60天 / 90天）
+- 活动趋势图表
+
+![统计](docs/screenshots/stats.png)
 
 ### 多租户 & 认证
 
@@ -72,6 +85,8 @@
 - 个人空间 + 组织空间切换
 - 所有数据表通过 `tenant_id` + `tenant_type` 实现租户隔离
 - 组织成员管理（OWNER / ADMIN / MEMBER 角色）
+
+![登录](docs/screenshots/login.png)
 
 ### UI / UX
 
@@ -160,9 +175,74 @@ java -jar target/notebook-0.1.0-SNAPSHOT.jar
 
 ---
 
-## 数据库结构
+## 数据库设计
 
-Flyway 迁移脚本位于 `backend/src/main/resources/db/migration/`，以下为完整建表语句（V1 ~ V6）：
+### 表结构概览
+
+| 表名 | 说明 | 多租户 | 核心字段 |
+|------|------|:------:|----------|
+| `sys_user` | 用户表 | — | username, email, password_hash, display_name, avatar_url |
+| `sys_organization` | 组织表 | — | name, owner_id → sys_user, avatar_url |
+| `sys_org_member` | 组织成员表 | — | organization_id → sys_organization, user_id → sys_user, role(OWNER/ADMIN/MEMBER) |
+| `note_folder` | 文件夹表 | ✅ | name, icon, parent_id（自引用，支持多级） |
+| `note` | 笔记表 | ✅ | title, content(LONGTEXT), excerpt, is_pinned, folder_id, tags(JSON) |
+| `note_tag` | 标签表 | ✅ | name（租户内唯一） |
+| `note_tag_relation` | 笔记-标签关联 | — | note_id → note, tag_id → note_tag |
+| `task` | 任务表 | ✅ | content, completed, priority(HIGH/MEDIUM/LOW), due_date, note_id |
+| `daily_note` | 每日笔记表 | ✅ | note_date（租户+日期唯一）, content, weather, mood |
+| `calendar_event` | 日历事件表 | ✅ | title, event_date, event_time, end_date, end_time, color, description |
+| `whiteboard` | 白板表 | ✅ | title, data(LONGTEXT 存储绘图JSON) |
+
+> **多租户字段**：标记 ✅ 的表均包含 `tenant_id`(BIGINT) + `tenant_type`(VARCHAR) 字段，通过行级过滤实现数据隔离。
+
+### ER 关系图
+
+```
+┌──────────────┐       ┌──────────────────┐       ┌────────────────┐
+│   sys_user   │──1:N──│ sys_org_member    │──N:1──│sys_organization│
+│              │       │  (role)           │       │  (owner_id→)   │
+└──────┬───────┘       └──────────────────┘       └────────────────┘
+       │ tenant_id = user_id (PERSONAL)
+       │ tenant_id = org_id  (ORGANIZATION)
+       ▼
+┌──────────────┐  1:N  ┌──────────────┐  N:N  ┌──────────────┐
+│ note_folder  │◄──────│     note     │──────►│   note_tag   │
+│ (parent_id↑) │       │ (folder_id→) │       │              │
+└──────────────┘       │ (tags JSON)  │       └──────────────┘
+                       │ (content 含  │              ▲
+                       │  [[id|title]]│       ┌──────┴───────┐
+                       │  双向链接)    │       │note_tag_relation│
+                       └──────┬───────┘       └──────────────┘
+                              │
+                    ┌─────────┼─────────┐
+                    ▼         ▼         ▼
+              ┌──────────┐ ┌────────┐ ┌───────────┐
+              │   task   │ │  daily │ │ calendar  │
+              │(note_id→)│ │ _note  │ │  _event   │
+              └──────────┘ │(weather│ │(end_date, │
+                           │ mood)  │ │ color)    │
+                           └────────┘ └───────────┘
+
+              ┌──────────────┐
+              │  whiteboard  │
+              │  (data JSON) │
+              └──────────────┘
+```
+
+### 设计要点
+
+1. **多租户隔离**：所有业务表通过 `tenant_id` + `tenant_type` 实现行级数据隔离，个人空间 `tenant_type=PERSONAL`（tenant_id=用户ID），组织空间 `tenant_type=ORGANIZATION`（tenant_id=组织ID）
+2. **双向链接存储**：链接关系内嵌在 `note.content` 中（`[[noteId|noteTitle]]` 格式），后端通过正则动态解析，无需独立的关系表
+3. **文件夹层级**：`note_folder.parent_id` 自引用实现任意深度的树形结构
+4. **标签系统**：采用 `note_tag` + `note_tag_relation` 多对多关联，同时在 `note.tags` 中冗余存储 JSON 数组供快速读取
+5. **跨天事件**：`calendar_event` 通过 `event_date/event_time`（开始）+ `end_date/end_time`（结束）支持跨天
+6. **头像存储**：`avatar_url` 使用 MEDIUMTEXT 类型，支持 Base64 Data URL 直接存储
+
+---
+
+### Flyway 迁移脚本
+
+迁移文件位于 `backend/src/main/resources/db/migration/`，以下为完整建表语句（V1 ~ V6）：
 
 ### V1 — 初始化核心表
 

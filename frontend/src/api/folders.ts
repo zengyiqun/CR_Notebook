@@ -6,6 +6,7 @@ interface FolderResponse {
   name: string
   icon: string
   parentId: number | null
+  sortOrder: number
   createdAt: string
   updatedAt: string
 }
@@ -16,6 +17,7 @@ function mapToFolder(r: FolderResponse): Folder {
     name: r.name,
     icon: r.icon,
     parentId: r.parentId ? String(r.parentId) : null,
+    sortOrder: r.sortOrder ?? 0,
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
   }
@@ -38,4 +40,7 @@ export const foldersApi = {
   },
 
   delete: (id: string) => http.delete(`/folders/${id}`),
+
+  reorder: (items: { id: number; sortOrder: number }[]) =>
+    http.put('/folders/reorder', items),
 }

@@ -3,6 +3,7 @@ export interface Folder {
   name: string
   icon: string
   parentId: string | null
+  sortOrder: number
   createdAt: string
   updatedAt: string
 }

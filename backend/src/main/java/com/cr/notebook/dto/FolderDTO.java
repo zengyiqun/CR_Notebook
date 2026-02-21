@@ -14,6 +14,7 @@ public class FolderDTO {
 
     private String icon = "📁";
     private Long parentId;
+    private Integer sortOrder;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

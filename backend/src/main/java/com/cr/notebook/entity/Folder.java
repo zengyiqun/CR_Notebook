@@ -13,4 +13,7 @@ public class Folder extends TenantAwareEntity {
     private String icon = "📁";
 
     private Long parentId;
+
+    @Builder.Default
+    private Integer sortOrder = 0;
 }

@@ -13,11 +13,11 @@ export const useFolderStore = defineStore('folder', () => {
   )
 
   const rootFolders = computed(() =>
-    folders.value.filter((f) => !f.parentId)
+    folders.value.filter((f) => !f.parentId).sort((a, b) => a.sortOrder - b.sortOrder)
   )
 
   function childrenOf(parentId: string) {
-    return folders.value.filter((f) => f.parentId === parentId)
+    return folders.value.filter((f) => f.parentId === parentId).sort((a, b) => a.sortOrder - b.sortOrder)
   }
 
   async function fetchFolders() {
@@ -85,5 +85,19 @@ export const useFolderStore = defineStore('folder', () => {
     activeFolderId.value = id
   }
 
-  return { folders, activeFolderId, activeFolder, rootFolders, loading, fetchFolders, addFolder, updateFolder, deleteFolder, setActive, childrenOf }
+  async function reorderFolders(orderedIds: string[], parentId: string | null) {
+    const items = orderedIds.map((id, index) => ({ id: Number(id), sortOrder: index }))
+    for (const item of items) {
+      const f = folders.value.find(f => f.id === String(item.id))
+      if (f) f.sortOrder = item.sortOrder
+    }
+    try {
+      await foldersApi.reorder(items)
+    } catch (e) {
+      console.error('Failed to reorder folders:', e)
+      await fetchFolders()
+    }
+  }
+
+  return { folders, activeFolderId, activeFolder, rootFolders, loading, fetchFolders, addFolder, updateFolder, deleteFolder, setActive, childrenOf, reorderFolders }
 })

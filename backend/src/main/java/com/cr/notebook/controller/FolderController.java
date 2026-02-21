@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/folders")
@@ -29,6 +30,12 @@ public class FolderController {
     @PutMapping("/{id}")
     public ResponseEntity<FolderDTO> update(@PathVariable Long id, @RequestBody FolderDTO dto) {
         return ResponseEntity.ok(folderService.updateFolder(id, dto));
+    }
+
+    @PutMapping("/reorder")
+    public ResponseEntity<Void> reorder(@RequestBody List<Map<String, Object>> items) {
+        folderService.reorderFolders(items);
+        return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/{id}")

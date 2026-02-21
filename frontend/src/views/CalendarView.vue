@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { useCalendarStore } from '@/stores/calendarStore'
+import type { CalendarEvent } from '@/types'
 
 const calendarStore = useCalendarStore()
 
@@ -60,6 +61,85 @@ function getEventsForDate(date: string) {
     if (e.date === date) return true
     if (e.endDate && date >= e.date && date <= e.endDate) return true
     return false
+  })
+}
+
+const calendarWeeks = computed(() => {
+  const days = calendarDays.value
+  const weeks = []
+  for (let i = 0; i < days.length; i += 7) {
+    weeks.push(days.slice(i, i + 7))
+  }
+  return weeks
+})
+
+interface MultiDayBar {
+  event: CalendarEvent
+  startCol: number
+  span: number
+  lane: number
+  isStart: boolean
+  isEnd: boolean
+}
+
+function computeWeekBars(weekDays: typeof calendarDays.value): MultiDayBar[] {
+  if (weekDays.length < 7) return []
+  const weekStart = weekDays[0].date
+  const weekEnd = weekDays[6].date
+
+  const events = calendarStore.events
+    .filter(e => e.endDate && e.endDate !== e.date && e.date <= weekEnd && e.endDate >= weekStart)
+    .sort((a, b) => {
+      if (a.date !== b.date) return a.date < b.date ? -1 : 1
+      const spanA = new Date(a.endDate || a.date).getTime() - new Date(a.date).getTime()
+      const spanB = new Date(b.endDate || b.date).getTime() - new Date(b.date).getTime()
+      return spanB - spanA
+    })
+
+  const bars: MultiDayBar[] = []
+  const lanes: boolean[][] = []
+
+  for (const evt of events) {
+    const effStart = evt.date < weekStart ? weekStart : evt.date
+    const effEnd = (evt.endDate || evt.date) > weekEnd ? weekEnd : (evt.endDate || evt.date)
+
+    const startCol = weekDays.findIndex(d => d.date === effStart)
+    const endCol = weekDays.findIndex(d => d.date === effEnd)
+    if (startCol < 0 || endCol < 0 || startCol > endCol) continue
+
+    let lane = 0
+    findLane: while (true) {
+      if (!lanes[lane]) lanes[lane] = new Array(7).fill(false)
+      for (let c = startCol; c <= endCol; c++) {
+        if (lanes[lane][c]) { lane++; continue findLane }
+      }
+      break
+    }
+    for (let c = startCol; c <= endCol; c++) {
+      lanes[lane][c] = true
+    }
+
+    bars.push({
+      event: evt, startCol, span: endCol - startCol + 1, lane,
+      isStart: evt.date >= weekStart,
+      isEnd: (evt.endDate || evt.date) <= weekEnd,
+    })
+  }
+  return bars
+}
+
+const weekBarsCache = computed(() =>
+  calendarWeeks.value.map(week => {
+    const bars = computeWeekBars(week)
+    const maxLanes = bars.length > 0 ? Math.max(...bars.map(b => b.lane)) + 1 : 0
+    return { bars, maxLanes }
+  })
+)
+
+function getSingleDayEvents(date: string) {
+  return calendarStore.events.filter(e => {
+    if (e.endDate && e.endDate !== e.date) return false
+    return e.date === date
   })
 }
 
@@ -177,39 +257,82 @@ const eventColors = ['#6366f1', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec
         >{{ wd }}</div>
       </div>
 
-      <!-- Days -->
-      <div class="grid grid-cols-7 gap-1">
-        <div
-          v-for="(day, i) in calendarDays"
-          :key="i"
-          @click="day.isCurrentMonth && showDayEvents(day.date)"
-          @dblclick.stop="day.isCurrentMonth && openAddEvent(day.date)"
-          class="min-h-24 p-1.5 rounded-xl border transition-all cursor-pointer"
-          :class="{
-            'bg-[var(--color-craft-bg)] border-transparent hover:border-[var(--color-craft-accent)]/30': day.isCurrentMonth,
-            'opacity-30 border-transparent': !day.isCurrentMonth,
-            'border-[var(--color-craft-accent)]/50 shadow-sm': selectedDateEvents === day.date,
-          }"
-        >
+      <!-- Weeks -->
+      <div class="space-y-1">
+        <div v-for="(week, wi) in calendarWeeks" :key="wi" class="relative">
+          <!-- Day cells -->
+          <div class="grid grid-cols-7 gap-1">
+            <div
+              v-for="day in week"
+              :key="day.date"
+              @click="day.isCurrentMonth && showDayEvents(day.date)"
+              @dblclick.stop="day.isCurrentMonth && openAddEvent(day.date)"
+              class="min-h-24 p-1.5 rounded-xl border transition-all cursor-pointer"
+              :class="{
+                'bg-[var(--color-craft-bg)] border-transparent hover:border-[var(--color-craft-accent)]/30': day.isCurrentMonth,
+                'opacity-30 border-transparent': !day.isCurrentMonth,
+                'border-[var(--color-craft-accent)]/50 shadow-sm': selectedDateEvents === day.date,
+              }"
+            >
+              <div
+                class="w-7 h-7 flex items-center justify-center rounded-full text-xs font-medium"
+                :class="day.isToday
+                  ? 'bg-[var(--color-craft-accent)] text-white shadow-sm'
+                  : 'text-[var(--color-craft-text)]'"
+              >{{ day.day }}</div>
+              <!-- Spacer for multi-day event lanes -->
+              <div v-if="weekBarsCache[wi].maxLanes > 0" :style="{ height: weekBarsCache[wi].maxLanes * 22 + 'px' }"></div>
+              <!-- Single-day events -->
+              <div class="space-y-0.5 mt-0.5">
+                <div
+                  v-for="evt in getSingleDayEvents(day.date).slice(0, 3)"
+                  :key="evt.id"
+                  @dblclick.stop="openEditEvent(evt)"
+                  class="text-[10px] px-1.5 py-0.5 rounded-md truncate text-white font-medium cursor-pointer hover:opacity-90"
+                  :style="{ backgroundColor: evt.color }"
+                  :title="evt.title + (evt.time ? ' ' + evt.time : '')"
+                >{{ evt.time ? evt.time + ' ' : '' }}{{ evt.title }}</div>
+                <div
+                  v-if="getSingleDayEvents(day.date).length > 3"
+                  class="text-[10px] text-[var(--color-craft-text-secondary)] px-1.5"
+                >+{{ getSingleDayEvents(day.date).length - 3 }} 更多</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Multi-day event bars (overlay) -->
           <div
-            class="w-7 h-7 flex items-center justify-center rounded-full text-xs font-medium mb-1"
-            :class="day.isToday
-              ? 'bg-[var(--color-craft-accent)] text-white shadow-sm '
-              : 'text-[var(--color-craft-text)]'"
-          >{{ day.day }}</div>
-          <div class="space-y-0.5">
+            v-if="weekBarsCache[wi].bars.length > 0"
+            class="absolute left-0 right-0 pointer-events-none"
+            :style="{ top: '36px' }"
+          >
             <div
-              v-for="evt in getEventsForDate(day.date).slice(0, 2)"
-              :key="evt.id + '-' + day.date"
-              @dblclick.stop="openEditEvent(evt)"
-              class="text-[10px] px-1.5 py-0.5 rounded-md truncate text-white font-medium cursor-pointer hover:opacity-90"
-              :style="{ backgroundColor: evt.color, opacity: isMultiDayEvent(evt) && day.date !== evt.date && day.date !== evt.endDate ? 0.7 : 1 }"
-              :title="evt.title + (isMultiDayEvent(evt) ? ` (${evt.date} ~ ${evt.endDate})` : '')"
-            >{{ eventDateLabel(evt, day.date) }}{{ evt.title }}</div>
-            <div
-              v-if="getEventsForDate(day.date).length > 2"
-              class="text-[10px] text-[var(--color-craft-text-secondary)] px-1.5"
-            >+{{ getEventsForDate(day.date).length - 2 }} 更多</div>
+              class="grid"
+              :style="{
+                gridTemplateColumns: 'repeat(7, 1fr)',
+                gridAutoRows: '20px',
+                rowGap: '2px',
+                columnGap: '4px',
+              }"
+            >
+              <div
+                v-for="bar in weekBarsCache[wi].bars"
+                :key="bar.event.id + '-w' + wi"
+                @click.stop
+                @dblclick.stop="openEditEvent(bar.event)"
+                class="pointer-events-auto truncate text-[10px] text-white font-medium px-1.5 leading-5 cursor-pointer hover:brightness-110 transition-all"
+                :class="{
+                  'rounded-l-md': bar.isStart,
+                  'rounded-r-md': bar.isEnd,
+                }"
+                :style="{
+                  gridColumn: `${bar.startCol + 1} / span ${bar.span}`,
+                  gridRow: String(bar.lane + 1),
+                  backgroundColor: bar.event.color,
+                }"
+                :title="`${bar.event.title} (${bar.event.date} ~ ${bar.event.endDate})`"
+              >{{ bar.isStart || bar.startCol === 0 ? bar.event.title : '' }}</div>
+            </div>
           </div>
         </div>
       </div>
