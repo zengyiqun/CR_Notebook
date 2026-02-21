@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+@theme {
+  --color-craft-bg: #fafafa;
+  --color-craft-surface: #ffffff;
+  --color-craft-sidebar: rgba(245, 245, 247, 0.85);
+  --color-craft-sidebar-solid: #f5f5f7;
+  --color-craft-border: #e5e5ea;
+  --color-craft-text: #1d1d1f;
+  --color-craft-text-secondary: #86868b;
+  --color-craft-accent: #6366f1;
+  --color-craft-accent-light: #e0e7ff;
+  --color-craft-hover: #f0f0f5;
+  --color-craft-danger: #ef4444;
+  --color-craft-success: #10b981;
+  --font-sans: "Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #app {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html.dark {
+  --color-craft-bg: #1a1a1e;
+  --color-craft-surface: #242428;
+  --color-craft-sidebar: rgba(30, 30, 34, 0.85);
+  --color-craft-sidebar-solid: #1e1e22;
+  --color-craft-border: #3a3a3e;
+  --color-craft-text: #f5f5f7;
+  --color-craft-text-secondary: #98989d;
+  --color-craft-hover: #2c2c30;
+  --color-craft-accent-light: #312e81;
+}
+
+body {
+  background-color: var(--color-craft-bg);
+  color: var(--color-craft-text);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-craft-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-craft-text-secondary);
+}
+
+/* Craft-style glassmorphism */
+.glass {
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+/* Page transition */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.fade-slide-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+/* Smooth focus ring */
+*:focus-visible {
+  outline: 2px solid var(--color-craft-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Selection color */
+::selection {
+  background: var(--color-craft-accent-light);
+  color: var(--color-craft-accent);
+}

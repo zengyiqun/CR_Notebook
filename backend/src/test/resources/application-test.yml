@@ -1,0 +1,30 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=MYSQL
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+
+  sql:
+    init:
+      schema-locations: classpath:schema-h2.sql
+      mode: always
+
+  flyway:
+    enabled: false
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+  global-config:
+    db-config:
+      id-type: auto
+
+app:
+  jwt:
+    secret: test-jwt-secret-key-must-be-at-least-256-bits-long-for-hs256-testing
+    expiration-ms: 86400000
+
+  cors:
+    allowed-origins: http://localhost:5173
