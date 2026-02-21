@@ -151,6 +151,21 @@
 - [x] 侧边栏文档计数开关
 - [x] 编辑按钮与失焦保存冲突修复 → 改为区域外双击退出编辑模式
 - [x] 每日笔记「完成」按钮手动退出编辑
+- [x] PDF 导出优化 — 修复文字显示不全
+  - 修复容器 `overflow:hidden` 截断内容问题
+  - 统一容器宽度与 html2canvas `windowWidth` 为 700px
+  - 添加 `overflow-wrap: break-word` 防止长文本溢出
+  - 代码块 `pre` 使用 `white-space: pre-wrap` 自动换行
+  - 启用自动分页控制 `pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }`
+  - 增大页面边距至 15mm、字体缩至 14px 以适配 A4
+- [x] Word 导出优化 — 修复排版混乱
+  - 新增 `sanitizeHtmlForWord()` 预处理 TipTap HTML
+  - 任务列表 `<ul data-type="taskList">` 转为 ☐/☑ 纯文本段落
+  - 代码块 `<pre><code>` 简化为带内联样式的 `<pre>`
+  - 笔记链接 `.note-link-chip` 转为 `[[标题]]` 纯文本
+  - 添加 `@page` A4 页面设置与标准页边距
+  - 补充 `mso-style-name` 使标题在 Word 导航窗格正确显示
+  - 完善中英文字体回退链（Microsoft YaHei / PingFang SC / Calibri）
 
 ### Phase 12 — 测试与文档 ✅
 
@@ -206,6 +221,18 @@
 - 节点大小 = `Math.sqrt(linkCount) * 3 + 基础半径`，链接数越多节点越大
 - 颜色按 `folderId` 分组映射到预设色板
 - 使用 SVG `<marker>` 实现有向箭头
+
+### 5. 文档导出方案
+
+**PDF 导出**：使用 `html2pdf.js`（html2canvas + jsPDF）
+- 离屏创建 DOM 容器（`position:fixed; left:-9999px`），不影响页面且不截断内容
+- html2canvas `windowWidth` 与容器宽度严格一致（700px）避免缩放偏差
+- 所有文本启用 `word-break` 防止长代码/URL 溢出
+
+**Word 导出**：使用 MSO HTML 格式（`.doc`）
+- 利用 Word 对 HTML+CSS 的解析能力，通过 `xmlns:w` / `xmlns:o` 命名空间注入 Word 专用指令
+- 导出前通过 `sanitizeHtmlForWord()` 清理 TipTap 特有的 HTML 结构（任务列表、链接节点、嵌套代码块）
+- 使用 `mso-style-name` 映射 Word 内建样式，确保标题层级在导航窗格中正确显示
 
 ---
 

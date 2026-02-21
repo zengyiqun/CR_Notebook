@@ -226,22 +226,40 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url)
 }
 
+const PDF_CONTENT_WIDTH = 700
+
 const exportStyles = `
-  h1 { font-size: 2em; font-weight: 700; margin: 0.6em 0 0.4em; }
-  h2 { font-size: 1.5em; font-weight: 600; margin: 0.83em 0 0.3em; }
-  h3 { font-size: 1.25em; font-weight: 600; margin: 1em 0 0.3em; }
-  p { margin: 0.4em 0; }
-  ul { padding-left: 1.5em; list-style-type: disc; }
-  ol { padding-left: 1.5em; list-style-type: decimal; }
-  li { margin: 0.2em 0; display: list-item; }
-  blockquote { border-left: 3px solid #6366f1; padding-left: 1em; margin: 0.75em 0; color: #666; font-style: italic; }
-  code { background: #f3f4f6; border-radius: 4px; padding: 0.15em 0.4em; font-size: 0.875em; font-family: monospace; }
-  pre { background: #f8f9fa; border: 1px solid #e5e7eb; border-radius: 8px; padding: 1em; overflow-x: auto; }
-  pre code { background: none; padding: 0; }
-  hr { border: none; border-top: 1px solid #e5e7eb; margin: 2em 0; }
+  * { box-sizing: border-box; }
+  h1 { font-size: 1.8em; font-weight: 700; margin: 0.6em 0 0.4em; line-height: 1.3; }
+  h2 { font-size: 1.4em; font-weight: 600; margin: 0.8em 0 0.3em; line-height: 1.3; }
+  h3 { font-size: 1.2em; font-weight: 600; margin: 0.8em 0 0.3em; line-height: 1.4; }
+  p { margin: 0.4em 0; line-height: 1.8; }
+  ul { padding-left: 1.5em; list-style-type: disc; margin: 0.4em 0; }
+  ol { padding-left: 1.5em; list-style-type: decimal; margin: 0.4em 0; }
+  ul ul { list-style-type: circle; }
+  ul ul ul { list-style-type: square; }
+  li { margin: 0.15em 0; display: list-item; line-height: 1.7; }
+  li p { margin: 0; display: inline; }
+  blockquote { border-left: 3px solid #6366f1; padding-left: 1em; margin: 0.6em 0; color: #555; font-style: italic; }
+  code { background: #f3f4f6; border-radius: 3px; padding: 0.1em 0.35em; font-size: 0.85em; font-family: "SF Mono", Menlo, Consolas, monospace; }
+  pre { background: #f8f9fa; border: 1px solid #e5e7eb; border-radius: 6px; padding: 0.8em 1em; margin: 0.6em 0; overflow-x: hidden; white-space: pre-wrap; word-break: break-all; }
+  pre code { background: none; padding: 0; font-size: 0.82em; }
+  hr { border: none; border-top: 1px solid #e5e7eb; margin: 1.5em 0; }
   mark { background: #fef08a; border-radius: 2px; padding: 0.05em 0.1em; }
   strong { font-weight: 700; }
+  img { max-width: 100%; height: auto; }
+  table { border-collapse: collapse; width: 100%; margin: 0.6em 0; }
+  td, th { border: 1px solid #d1d5db; padding: 6px 10px; text-align: left; font-size: 0.9em; }
+  th { background: #f9fafb; font-weight: 600; }
   ul[data-type="taskList"] { list-style: none; padding-left: 0; }
+  ul[data-type="taskList"] li { display: flex; align-items: baseline; gap: 0.4em; }
+  ul[data-type="taskList"] li::before { content: "☐"; font-size: 1em; flex-shrink: 0; }
+  ul[data-type="taskList"] li[data-checked="true"]::before { content: "☑"; }
+  ul[data-type="taskList"] li[data-checked="true"] p { text-decoration: line-through; color: #999; }
+  ul[data-type="taskList"] li label { display: none; }
+  .note-link-chip { color: #6366f1; font-weight: 500; text-decoration: none; }
+  .note-link-chip::before { content: "[["; opacity: 0.5; }
+  .note-link-chip::after { content: "]]"; opacity: 0.5; }
 `
 
 async function exportPdf() {
@@ -251,16 +269,17 @@ async function exportPdf() {
   const title = activeNote.value.title || '笔记'
 
   const wrapper = document.createElement('div')
-  wrapper.style.cssText = 'overflow:hidden;height:0;position:absolute;left:0;top:0;'
+  wrapper.style.cssText = 'position:fixed;left:-9999px;top:0;z-index:-1;visibility:hidden;'
 
   const container = document.createElement('div')
-  container.style.cssText = 'width:800px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.8;color:#1a1a1a;padding:40px;background:#fff;'
+  container.style.cssText = `width:${PDF_CONTENT_WIDTH}px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC",Roboto,sans-serif;font-size:14px;line-height:1.8;color:#1a1a1a;padding:40px 0;background:#fff;overflow-wrap:break-word;word-break:break-word;`
 
   const styleEl = document.createElement('style')
   styleEl.textContent = exportStyles
   container.appendChild(styleEl)
 
   const heading = document.createElement('h1')
+  heading.style.cssText = 'font-size:1.6em;font-weight:700;margin:0 0 0.5em;line-height:1.3;border-bottom:2px solid #e5e7eb;padding-bottom:0.3em;'
   heading.textContent = title
   container.appendChild(heading)
 
@@ -276,11 +295,20 @@ async function exportPdf() {
     const html2pdf = mod.default || mod
     await html2pdf()
       .set({
-        margin: [10, 10, 10, 10],
+        margin: [15, 15, 15, 15],
         filename: `${title}.pdf`,
-        image: { type: 'jpeg', quality: 0.95 },
-        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollX: 0, scrollY: 0, windowWidth: 900 },
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          scrollX: 0,
+          scrollY: 0,
+          windowWidth: PDF_CONTENT_WIDTH,
+          letterRendering: true,
+        },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
       })
       .from(container)
       .save()
@@ -289,35 +317,188 @@ async function exportPdf() {
   }
 }
 
-function buildExportHtml(html: string, title: string): string {
-  return `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
-<head><meta charset="utf-8"><title>${title}</title></head><body><h1>${title}</h1>${html}</body></html>`
+function sanitizeHtmlForWord(html: string): string {
+  let result = html
+  const tmp = document.createElement('div')
+  tmp.innerHTML = result
+
+  tmp.querySelectorAll('ul[data-type="taskList"]').forEach(ul => {
+    ul.querySelectorAll('li').forEach(li => {
+      const checked = li.getAttribute('data-checked') === 'true'
+      const label = li.querySelector('label')
+      if (label) label.remove()
+      const text = li.textContent?.trim() || ''
+      const prefix = checked ? '☑ ' : '☐ '
+      const p = document.createElement('p')
+      p.style.cssText = checked
+        ? 'margin:2pt 0;text-indent:-1.5em;padding-left:1.5em;text-decoration:line-through;color:#999;'
+        : 'margin:2pt 0;text-indent:-1.5em;padding-left:1.5em;'
+      p.textContent = prefix + text
+      li.replaceWith(p)
+    })
+    const parent = ul.parentNode
+    if (parent) {
+      while (ul.firstChild) parent.insertBefore(ul.firstChild, ul)
+      ul.remove()
+    }
+  })
+
+  tmp.querySelectorAll('.note-link-chip').forEach(chip => {
+    const span = document.createElement('span')
+    span.style.cssText = 'color:#6366f1;font-weight:bold;'
+    span.textContent = `[[${chip.textContent?.trim()}]]`
+    chip.replaceWith(span)
+  })
+
+  tmp.querySelectorAll('pre').forEach(pre => {
+    const code = pre.querySelector('code')
+    const text = (code || pre).textContent || ''
+    const newPre = document.createElement('pre')
+    newPre.style.cssText = 'font-family:Consolas,"Courier New",monospace;font-size:10pt;background-color:#f8f9fa;border:1pt solid #e0e0e0;padding:8pt 10pt;margin:6pt 0;white-space:pre-wrap;word-break:break-all;line-height:1.5;'
+    newPre.textContent = text
+    pre.replaceWith(newPre)
+  })
+
+  return tmp.innerHTML
 }
 
 function exportDocx() {
   if (!editorRef.value || !activeNote.value) return
   showExportMenu.value = false
-  const html = editorRef.value.getHTML()
+  const rawHtml = editorRef.value.getHTML()
   const title = activeNote.value.title || '笔记'
+  const html = sanitizeHtmlForWord(rawHtml)
 
   const docContent = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
 <head><meta charset="utf-8"><title>${title}</title>
-<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->
+<!--[if gte mso 9]><xml>
+<w:WordDocument>
+  <w:View>Print</w:View>
+  <w:Zoom>100</w:Zoom>
+  <w:DoNotOptimizeForBrowser/>
+</w:WordDocument>
+</xml><![endif]-->
 <style>
-body { font-family: "Microsoft YaHei", "SimSun", Arial, sans-serif; font-size: 12pt; line-height: 1.6; color: #333; }
-h1 { font-size: 22pt; font-weight: bold; margin-top: 12pt; margin-bottom: 6pt; }
-h2 { font-size: 16pt; font-weight: bold; margin-top: 12pt; margin-bottom: 4pt; }
-h3 { font-size: 14pt; font-weight: bold; margin-top: 10pt; margin-bottom: 4pt; }
-p { margin: 4pt 0; }
-ul { padding-left: 20pt; }
-ol { padding-left: 20pt; }
-li { margin: 2pt 0; }
-blockquote { border-left: 3pt solid #6366f1; padding-left: 10pt; margin: 8pt 0; color: #666; font-style: italic; }
-code { font-family: Consolas, "Courier New", monospace; font-size: 10pt; background-color: #f3f4f6; padding: 1pt 3pt; }
-pre { font-family: Consolas, "Courier New", monospace; font-size: 10pt; background-color: #f8f9fa; border: 1pt solid #e5e7eb; padding: 8pt; }
-pre code { background: none; padding: 0; }
-hr { border: none; border-top: 1pt solid #e5e7eb; }
-table { border-collapse: collapse; } td, th { border: 1pt solid #ccc; padding: 4pt 8pt; }
+  @page {
+    size: A4;
+    margin: 2.54cm 3.17cm 2.54cm 3.17cm;
+    mso-header-margin: 1.5cm;
+    mso-footer-margin: 1.75cm;
+  }
+  body {
+    font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+    font-size: 12pt;
+    line-height: 1.8;
+    color: #333;
+    mso-ascii-font-family: "Calibri";
+    mso-hansi-font-family: "Calibri";
+    mso-fareast-font-family: "Microsoft YaHei";
+  }
+  h1 {
+    font-size: 22pt;
+    font-weight: bold;
+    margin-top: 0pt;
+    margin-bottom: 8pt;
+    padding-bottom: 6pt;
+    border-bottom: 2pt solid #e5e7eb;
+    line-height: 1.3;
+    mso-style-name: "标题 1";
+  }
+  h2 {
+    font-size: 16pt;
+    font-weight: bold;
+    margin-top: 14pt;
+    margin-bottom: 6pt;
+    line-height: 1.3;
+    mso-style-name: "标题 2";
+  }
+  h3 {
+    font-size: 14pt;
+    font-weight: bold;
+    margin-top: 12pt;
+    margin-bottom: 4pt;
+    line-height: 1.4;
+    mso-style-name: "标题 3";
+  }
+  p {
+    margin-top: 3pt;
+    margin-bottom: 3pt;
+    line-height: 1.8;
+    mso-style-name: "正文";
+  }
+  ul {
+    margin-top: 4pt;
+    margin-bottom: 4pt;
+    margin-left: 18pt;
+    mso-list: l0 level1 lfo1;
+  }
+  ol {
+    margin-top: 4pt;
+    margin-bottom: 4pt;
+    margin-left: 18pt;
+  }
+  li {
+    margin-top: 2pt;
+    margin-bottom: 2pt;
+    line-height: 1.6;
+  }
+  li p {
+    margin: 0;
+    display: inline;
+  }
+  blockquote {
+    border-left: 3pt solid #6366f1;
+    padding-left: 10pt;
+    margin: 8pt 0 8pt 4pt;
+    color: #555;
+    font-style: italic;
+  }
+  code {
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 10pt;
+    background-color: #f3f4f6;
+    padding: 1pt 3pt;
+    mso-highlight: #f3f4f6;
+  }
+  pre {
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 10pt;
+    background-color: #f8f9fa;
+    border: 1pt solid #e0e0e0;
+    padding: 8pt 10pt;
+    margin: 6pt 0;
+    white-space: pre-wrap;
+    word-break: break-all;
+    line-height: 1.5;
+  }
+  pre code { background: none; padding: 0; }
+  hr {
+    border: none;
+    border-top: 1pt solid #d1d5db;
+    margin-top: 12pt;
+    margin-bottom: 12pt;
+  }
+  mark { background-color: #fef08a; mso-highlight: yellow; }
+  strong { font-weight: bold; }
+  em { font-style: italic; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 6pt 0;
+  }
+  td, th {
+    border: 1pt solid #bbb;
+    padding: 4pt 8pt;
+    text-align: left;
+    font-size: 11pt;
+    vertical-align: top;
+  }
+  th {
+    background-color: #f3f4f6;
+    font-weight: bold;
+    mso-highlight: #f3f4f6;
+  }
+  img { max-width: 100%; }
 </style></head>
 <body><h1>${title}</h1>${html}</body></html>`
 
