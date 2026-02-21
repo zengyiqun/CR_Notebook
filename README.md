@@ -2,6 +2,12 @@
 
 一款受 [Craft](https://craft.do/) 启发的全栈笔记应用，支持多租户数据隔离，基于 Vue 3 + Spring Boot + MySQL 构建。
 
+> **🤖 AI 生成声明**
+>
+> 本项目完全由 **[Cursor IDE](https://cursor.com/)** + **Claude (Anthropic)** 大语言模型通过 AI 辅助编程生成。
+> 从架构设计、代码实现、单元测试到项目文档，均通过人机协作的 Prompt 驱动方式完成。
+> 详细的开发计划与迭代过程见 [PLAN.md](./PLAN.md)。
+
 ## 功能特性
 
 ### 核心编辑
