@@ -322,6 +322,7 @@ function sanitizeHtmlForWord(html: string): string {
   const tmp = document.createElement('div')
   tmp.innerHTML = result
 
+  // 将 TipTap 任务列表降级为 Word 更稳定识别的普通段落格式。
   tmp.querySelectorAll('ul[data-type="taskList"]').forEach(ul => {
     ul.querySelectorAll('li').forEach(li => {
       const checked = li.getAttribute('data-checked') === 'true'
@@ -529,6 +530,7 @@ function onKeydown(e: KeyboardEvent) {
 
 function onDocDblclick(e: MouseEvent) {
   if (!isEditing.value) return
+  // 仅在双击编辑面板外时退出编辑并触发保存，避免与编辑器内操作冲突。
   if (editorPanel.value?.contains(e.target as Node)) return
   exitEditMode()
 }

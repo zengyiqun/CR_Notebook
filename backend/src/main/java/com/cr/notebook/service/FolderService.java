@@ -23,6 +23,7 @@ public class FolderService {
                 new LambdaQueryWrapper<Folder>()
                         .eq(Folder::getTenantId, TenantContext.getTenantId())
                         .eq(Folder::getTenantType, TenantContext.getTenantType())
+                        // 先按手动排序，再按创建时间兜底，保证列表稳定。
                         .orderByAsc(Folder::getSortOrder)
                         .orderByAsc(Folder::getCreatedAt));
         return folders.stream().map(this::toDTO).toList();
@@ -61,6 +62,7 @@ public class FolderService {
     }
 
     private void deleteRecursive(Long parentId) {
+        // 深度优先删除子节点，避免父节点先删导致孤儿数据。
         List<Folder> children = folderMapper.selectList(
                 new LambdaQueryWrapper<Folder>().eq(Folder::getParentId, parentId));
         for (Folder child : children) {
@@ -71,6 +73,7 @@ public class FolderService {
 
     @Transactional
     public void reorderFolders(List<Map<String, Object>> items) {
+        // 前端已给出最终顺序：这里按 id 批量落库 sortOrder，不调整父子关系。
         for (Map<String, Object> item : items) {
             Long id = Long.valueOf(item.get("id").toString());
             Integer sortOrder = Integer.valueOf(item.get("sortOrder").toString());

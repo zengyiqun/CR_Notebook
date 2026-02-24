@@ -87,6 +87,8 @@ function computeWeekBars(weekDays: typeof calendarDays.value): MultiDayBar[] {
   const weekStart = weekDays[0].date
   const weekEnd = weekDays[6].date
 
+  // 仅保留与当前周有交集的跨天事件，并优先放置开始更早/跨度更长的事件，
+  // 这样后续“车道分配”更稳定，减少视觉跳动。
   const events = calendarStore.events
     .filter(e => e.endDate && e.endDate !== e.date && e.date <= weekEnd && e.endDate >= weekStart)
     .sort((a, b) => {
@@ -107,6 +109,7 @@ function computeWeekBars(weekDays: typeof calendarDays.value): MultiDayBar[] {
     const endCol = weekDays.findIndex(d => d.date === effEnd)
     if (startCol < 0 || endCol < 0 || startCol > endCol) continue
 
+    // 贪心分配“车道”：找到第一个在 [startCol, endCol] 区间都空闲的 lane。
     let lane = 0
     findLane: while (true) {
       if (!lanes[lane]) lanes[lane] = new Array(7).fill(false)

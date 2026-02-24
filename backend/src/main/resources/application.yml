@@ -3,7 +3,7 @@ spring:
     name: cr-notebook
 
   datasource:
-    url: jdbc:mysql://localhost:3306/cr_notebook?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+    url: jdbc:mysql://127.0.0.1:3306/cr_notebook?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
     username: root
     password: 123@abc
     driver-class-name: com.mysql.cj.jdbc.Driver

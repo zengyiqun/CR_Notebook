@@ -23,6 +23,9 @@ public class CalendarEventService {
                 new LambdaQueryWrapper<CalendarEvent>()
                         .eq(CalendarEvent::getTenantId, TenantContext.getTenantId())
                         .eq(CalendarEvent::getTenantType, TenantContext.getTenantType())
+                        // 命中条件：
+                        // 1) 起始日期在查询区间内；或
+                        // 2) 跨天事件与查询区间有重叠（[eventDate, endDate] ∩ [startDate, endDate] 非空）。
                         .and(w -> w
                                 .between(CalendarEvent::getEventDate, startDate, endDate)
                                 .or(o -> o

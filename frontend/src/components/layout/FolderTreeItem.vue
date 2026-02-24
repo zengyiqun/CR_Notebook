@@ -89,6 +89,7 @@ function onDragOver(e: DragEvent) {
     e.dataTransfer.dropEffect = 'move'
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
     const y = e.clientY - rect.top
+    // 根据鼠标落点决定插入到当前节点之前或之后。
     folderDragPosition.value = y < rect.height / 2 ? 'before' : 'after'
     isDragOver.value = false
     return
@@ -116,6 +117,7 @@ function onDrop(e: DragEvent) {
     const targetIdx = ids.indexOf(props.folder.id)
     if (targetIdx < 0) return
     const insertIdx = position === 'after' ? targetIdx + 1 : targetIdx
+    // 仅在同级 siblings 内重排，parentId 不变，避免误改树结构。
     ids.splice(insertIdx, 0, folderId)
     emit('reorder', ids, props.folder.parentId ?? null)
     return

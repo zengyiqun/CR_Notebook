@@ -64,6 +64,7 @@ public class StatsService {
                 new LambdaQueryWrapper<OrgMember>()
                         .eq(OrgMember::getOrganizationId, orgId)
                         .eq(OrgMember::getUserId, currentUserId));
+        // 仅组织成员可查看组织统计，避免跨组织数据泄露。
         if (membership == null) throw new IllegalArgumentException("您不是该组织的成员");
 
         StatsDTO stats = new StatsDTO();
@@ -112,6 +113,7 @@ public class StatsService {
     }
 
     private List<StatsDTO.DailyStatsDTO> buildDailyStats(Long tenantId, TenantType tenantType, int days) {
+        // 与前端时间筛选保持一致，统一限制在 [1, 90] 天。
         int safeDays = Math.max(1, Math.min(days, 90));
         List<StatsDTO.DailyStatsDTO> result = new ArrayList<>();
         LocalDate today = LocalDate.now();
@@ -122,6 +124,7 @@ public class StatsService {
 
             StatsDTO.DailyStatsDTO dto = new StatsDTO.DailyStatsDTO();
             dto.setDate(day.toString());
+            // 口径说明：按“创建时间”统计当日新增笔记/任务及当日创建且已完成的任务。
             dto.setNoteCount(noteMapper.selectCount(
                     new LambdaQueryWrapper<Note>()
                             .eq(Note::getTenantId, tenantId)

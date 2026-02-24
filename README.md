@@ -122,12 +122,12 @@
 
 - **Java** 17+
 - **Node.js** 18+
-- **MySQL** 8.0+（或通过 Docker 启动）
+- **MySQL** 8.0+（本地安装并启动）
 - **Maven** 3.8+（或使用项目内置 `mvnw`）
 
 ### 1. 创建数据库
 
-连接 MySQL 后执行：
+先确认本地 MySQL 已启动，然后连接 MySQL 执行：
 
 ```sql
 CREATE DATABASE IF NOT EXISTS cr_notebook
@@ -136,6 +136,8 @@ CREATE DATABASE IF NOT EXISTS cr_notebook
 ```
 
 > Flyway 会在后端首次启动时自动执行所有迁移脚本，无需手动建表。
+
+> 默认连接配置：`127.0.0.1:3306`，用户名 `root`，密码 `123@abc`。如与你本地环境不一致，请修改 `backend/src/main/resources/application.yml`。
 
 ### 2. 启动后端
 
